@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitetura AWS - Serverless CDC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface: #151a28;
+            --surface-hover: #1c2333;
+            --border: #2a3143;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            
+            --aws-lambda: #ff9900;
+            --aws-dynamo: #4053d6;
+            --aws-eb: #e7157b;
+            --aws-sqs: #ff4f81;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.8), var(--bg-color));
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* --- DIAGRAM SECTION --- */
+        .diagram-wrapper {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 60px 40px;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 20px;
+            overflow-x: auto;
+            margin-bottom: 60px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .stage {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .stage-title {
+            text-align: center;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .node {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .node:hover {
+            transform: translateY(-5px);
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--text-muted);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .node-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .node-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .node-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .node.lambda { border-top: 3px solid var(--aws-lambda); }
+        .node.lambda .node-icon { color: var(--aws-lambda); }
+        
+        .node.dynamo { border-top: 3px solid var(--aws-dynamo); }
+        .node.dynamo .node-icon { color: var(--aws-dynamo); }
+        
+        .node.eb { border-top: 3px solid var(--aws-eb); }
+        .node.eb .node-icon { color: var(--aws-eb); }
+        
+        .node.sqs { border-top: 3px solid var(--aws-sqs); }
+        .node.sqs .node-icon { color: var(--aws-sqs); }
+
+        .connector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--border);
+            font-size: 1.5rem;
+        }
+
+        /* --- DATA FLOW SECTION --- */
+        .data-flow-container {
+            margin-top: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background-color: var(--surface-hover);
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .scenario-content {
+            display: none;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 30px;
+            align-items: stretch;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .scenario-content.active {
+            display: grid;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .code-panel {
+            background-color: #0f131f;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-header {
+            background-color: var(--surface);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-header.source i { color: var(--aws-dynamo); }
+        .code-header.target i { color: var(--aws-sqs); }
+
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            margin: 0;
+            flex: 1;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #c9d1d9;
+        }
+
+        .key { color: #79c0ff; }
+        .string { color: #a5d6ff; }
+        .boolean { color: #ff7b72; }
+
+        .transformer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            color: var(--text-muted);
+            padding: 20px;
+        }
+
+        .transformer-badge {
+            background-color: rgba(231, 21, 123, 0.1);
+            border: 1px solid var(--aws-eb);
+            color: var(--text-main);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transformer-badge i { color: var(--aws-eb); }
+
+        @media (max-width: 1024px) {
+            .diagram-wrapper { flex-direction: column; align-items: center; }
+            .stage { width: 100%; max-width: 400px; }
+            .connector { transform: rotate(90deg); margin: 10px 0; }
+            .scenario-content { grid-template-columns: 1fr; }
+            .transformer { flex-direction: row; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Arquitetura Orientada a Eventos</h1>
+        <p>Sistema de notificação escalável utilizando Change Data Capture (CDC) com DynamoDB Streams e EventBridge Pipes.</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- DIAGRAMA ARQUITETURAL -->
+        <div class="diagram-wrapper">
+            
+            <div class="stage">
+                <div class="stage-title">Aplicação (Produtores)</div>
+                <div class="node lambda">
+                    <div class="node-icon"><i class="fa-solid fa-code"></i></div>
+                    <div class="node-title">Lambdas A / B</div>
+                    <div class="node-desc">Logica de Negócio Tabela A</div>
+                </div>
+                <div class="node lambda">
+                    <div class="node-icon"><i class="fa-solid fa-code"></i></div>
+                    <div class="node-title">Lambdas C / D</div>
+                    <div class="node-desc">Lógica de Negócio Tabela B</div>
+                </div>
+            </div>
+
+            <div class="connector"><i class="fa-solid fa-arrow-right-long"></i></div>
+
+            <div class="stage">
+                <div class="stage-title">Armazenamento</div>
+                <div class="node dynamo">
+                    <div class="node-icon"><i class="fa-solid fa-database"></i></div>
+                    <div class="node-title">DynamoDB A</div>
+                    <div class="node-desc">Stream Habilitado</div>
+                </div>
+                <div class="node dynamo">
+                    <div class="node-icon"><i class="fa-solid fa-database"></i></div>
+                    <div class="node-title">DynamoDB B</div>
+                    <div class="node-desc">Stream Habilitado</div>
+                </div>
+            </div>
+
+            <div class="connector"><i class="fa-solid fa-arrow-right-long"></i></div>
+
+            <div class="stage">
+                <div class="stage-title">Filtragem & Transformação</div>
+                <div class="node eb">
+                    <div class="node-icon"><i class="fa-solid fa-filter"></i></div>
+                    <div class="node-title">EventBridge Pipe A</div>
+                    <div class="node-desc">Filtro $or e Input Template</div>
+                </div>
+                <div class="node eb">
+                    <div class="node-icon"><i class="fa-solid fa-filter"></i></div>
+                    <div class="node-title">EventBridge Pipe B</div>
+                    <div class="node-desc">Filtro $or e Input Template</div>
+                </div>
+            </div>
+
+            <div class="connector"><i class="fa-solid fa-arrow-right-long"></i></div>
+
+            <div class="stage">
+                <div class="stage-title">Mensageria & Consumo</div>
+                <div class="node sqs">
+                    <div class="node-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="node-title">Fila SQS</div>
+                    <div class="node-desc">Notificações Filtradas</div>
+                </div>
+                <div class="node lambda" style="margin-top:20px;">
+                    <div class="node-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <div class="node-title">Lambda Notificadora</div>
+                    <div class="node-desc">Envia POST REST</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FLUXO DE DADOS (PAYLOADS) -->
+        <div class="data-flow-container">
+            <h2 class="section-title">Análise de Tráfego de Dados</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showScenario('a', this)">Cenário 1: Lambda A (Insert)</button>
+                <button class="tab-btn" onclick="showScenario('b', this)">Cenário 2: Lambda B (Modify)</button>
+                <button class="tab-btn" onclick="showScenario('c', this)">Cenário 3: Lambda C (Insert)</button>
+                <button class="tab-btn" onclick="showScenario('d', this)">Cenário 4: Lambda D (Modify)</button>
+            </div>
+
+            <!-- CENÁRIO A -->
+            <div class="scenario-content active" id="scenario-a">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"INSERT"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_123"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"aceito"</span>},
+      <span class="key">"outrosDados"</span>: {<span class="key">"S"</span>: <span class="string">"dados gigantes ignorados"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_123"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"aceito"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaA"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"INSERT"</span>
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- CENÁRIO B -->
+            <div class="scenario-content" id="scenario-b">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"MODIFY"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"OldImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_123"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"aceito"</span>}
+    },
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_123"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"recusado"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_123"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"recusado"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaA"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"MODIFY"</span>
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- CENÁRIO C -->
+            <div class="scenario-content" id="scenario-c">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"INSERT"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_456"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"sucesso"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_456"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"sucesso"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"INSERT"</span>
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- CENÁRIO D -->
+            <div class="scenario-content" id="scenario-d">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"MODIFY"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"OldImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_789"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"criado"</span>}
+    },
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_789"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"agendado"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_789"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"agendado"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"MODIFY"</span>
+}</code></pre>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function showScenario(id, element) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.scenario-content').forEach(content => content.classList.remove('active'));
+            
+            element.classList.add('active');
+            document.getElementById('scenario-' + id).classList.add('active');
+        }
+    </script>
+</body>
+</html>
