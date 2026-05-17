@@ -57,3 +57,26 @@ A **Arquitetura 1 (CDC com DynamoDB Streams e EventBridge Pipes)** é a abordage
 Como você já tem o DynamoDB Streams ativado e o gatilho da sua notificação é exatamente a mudança de estado na tabela (ex: aceito -> recusado), faz muito sentido usar a infraestrutura da AWS para garantir a entrega desse evento sem o risco do *Dual-Write*. A economia de código nas suas 4 Lambdas atuais justifica a adoção do EventBridge Pipes, transformando a AWS no responsável por garantir que, se o dado mudou, o evento chegará à fila.
 
 A **Arquitetura 2** só seria indicada se você tivesse requisitos fortes de payloads de notificação com informações que **não** residem no DynamoDB, ou se você estivesse usando um banco de dados relacional sem um suporte amigável para CDC.
+
+---
+
+## Estimativa de Custos AWS (Valores de Referência)
+
+Uma consideração importante na escolha da arquitetura é o custo dos serviços AWS envolvidos na **Arquitetura 1**. Os serviços utilizados possuem camadas gratuitas (Free Tier) generosas e custos escaláveis muito baixos.
+
+**DynamoDB Streams:**
+* **Free Tier:** 2,5 milhões de solicitações de leitura do stream por mês são gratuitas.
+* **Excedente:** Aproximadamente $0.02 por 100.000 solicitações de leitura.
+* *Nota:* Como o EventBridge Pipes gerencia a leitura, o consumo é otimizado via polling (batching).
+
+**EventBridge Pipes:**
+* **Custo Fixo/Mensal:** Nenhum.
+* **Custo de Requisição:** $0.40 por 1 milhão de requisições.
+* *Filtros:* O EventBridge Pipes não cobra por eventos que são bloqueados no filtro, economizando no envio para o target (SQS).
+
+**Amazon SQS (Standard):**
+* **Free Tier:** 1 milhão de requisições por mês são gratuitas.
+* **Excedente:** $0.40 por 1 milhão de requisições.
+
+**Comparativo de Custo (Arq 1 vs Arq 2):**
+Na Arquitetura 2 (SQS Direto), você economiza o custo do Stream ($0.02) e do Pipes ($0.40), mas aumenta o tempo de execução da Lambda de Negócio (cobrada em GB-segundo) devido ao *overhead* de latência de rede para se comunicar com o SQS. Na maioria dos cenários de média escala, os custos se anulam, tornando a decisão muito mais voltada para os **ganhos de consistência de dados** (Arq 1) do que para a micro-otimização financeira.

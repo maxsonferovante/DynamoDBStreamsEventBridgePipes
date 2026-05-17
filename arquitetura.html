@@ -366,8 +366,9 @@
             <div class="tabs">
                 <button class="tab-btn active" onclick="showScenario('a', this)">Cenário 1: Lambda A (Insert)</button>
                 <button class="tab-btn" onclick="showScenario('b', this)">Cenário 2: Lambda B (Modify)</button>
-                <button class="tab-btn" onclick="showScenario('c', this)">Cenário 3: Lambda C (Insert)</button>
-                <button class="tab-btn" onclick="showScenario('d', this)">Cenário 4: Lambda D (Modify)</button>
+                <button class="tab-btn" onclick="showScenario('c', this)">Cenário 3: Lambda D (Modify)</button>
+                <button class="tab-btn" onclick="showScenario('d', this)">Cenário 4: Lambda C (Insert Sucesso)</button>
+                <button class="tab-btn" onclick="showScenario('e', this)">Cenário 5: Lambda C (Insert Erro)</button>
             </div>
 
             <!-- CENÁRIO A -->
@@ -456,43 +457,6 @@
                         <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
                     </div>
                     <pre><code>{
-  <span class="key">"eventName"</span>: <span class="string">"INSERT"</span>,
-  <span class="key">"dynamodb"</span>: {
-    <span class="key">"NewImage"</span>: {
-      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_456"</span>},
-      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"sucesso"</span>}
-    }
-  }
-}</code></pre>
-                </div>
-                
-                <div class="transformer">
-                    <div class="transformer-badge">
-                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
-                    </div>
-                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
-                </div>
-
-                <div class="code-panel">
-                    <div class="code-header target">
-                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
-                    </div>
-                    <pre><code>{
-  <span class="key">"usuarioId"</span>: <span class="string">"usr_456"</span>,
-  <span class="key">"statusAtual"</span>: <span class="string">"sucesso"</span>,
-  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
-  <span class="key">"tipoEvento"</span>: <span class="string">"INSERT"</span>
-}</code></pre>
-                </div>
-            </div>
-
-            <!-- CENÁRIO D -->
-            <div class="scenario-content" id="scenario-d">
-                <div class="code-panel">
-                    <div class="code-header source">
-                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
-                    </div>
-                    <pre><code>{
   <span class="key">"eventName"</span>: <span class="string">"MODIFY"</span>,
   <span class="key">"dynamodb"</span>: {
     <span class="key">"OldImage"</span>: {
@@ -523,6 +487,80 @@
   <span class="key">"statusAtual"</span>: <span class="string">"agendado"</span>,
   <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
   <span class="key">"tipoEvento"</span>: <span class="string">"MODIFY"</span>
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- CENÁRIO D -->
+            <div class="scenario-content" id="scenario-d">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"INSERT"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_456"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"sucesso"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_456"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"sucesso"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"INSERT"</span>
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- CENÁRIO E -->
+            <div class="scenario-content" id="scenario-e">
+                <div class="code-panel">
+                    <div class="code-header source">
+                        <i class="fa-solid fa-database"></i> Evento Bruto (DynamoDB Stream)
+                    </div>
+                    <pre><code>{
+  <span class="key">"eventName"</span>: <span class="string">"INSERT"</span>,
+  <span class="key">"dynamodb"</span>: {
+    <span class="key">"NewImage"</span>: {
+      <span class="key">"usuarioId"</span>: {<span class="key">"S"</span>: <span class="string">"usr_999"</span>},
+      <span class="key">"status"</span>: {<span class="key">"S"</span>: <span class="string">"erro"</span>}
+    }
+  }
+}</code></pre>
+                </div>
+                
+                <div class="transformer">
+                    <div class="transformer-badge">
+                        <i class="fa-solid fa-filter"></i> EB Pipes Input Transformer
+                    </div>
+                    <i class="fa-solid fa-arrow-right-long fa-2x"></i>
+                </div>
+
+                <div class="code-panel">
+                    <div class="code-header target">
+                        <i class="fa-solid fa-layer-group"></i> Payload Enxuto (SQS Target)
+                    </div>
+                    <pre><code>{
+  <span class="key">"usuarioId"</span>: <span class="string">"usr_999"</span>,
+  <span class="key">"statusAtual"</span>: <span class="string">"erro"</span>,
+  <span class="key">"tabelaOrigem"</span>: <span class="string">"TabelaB"</span>,
+  <span class="key">"tipoEvento"</span>: <span class="string">"INSERT"</span>
 }</code></pre>
                 </div>
             </div>

@@ -151,7 +151,7 @@ EOF
 
 ---
 
-## 2. Fluxo de Dados: Os 4 Cenários
+## 2. Fluxo de Dados: Os 5 Cenários
 
 Graças ao `input_template` configurado no Terraform acima, a fila SQS **não** receberá o JSON complexo padrão do DynamoDB Streams. A fila receberá um JSON mapeado, limpo e enxuto. 
 
@@ -214,33 +214,7 @@ A Lambda B altera o status de um registro existente de `aceito` para `recusado`.
 }
 ```
 
-### Cenário 3: Lambda C (Tabela B - INSERT)
-A Lambda C cria um registro na Tabela B com status `sucesso`.
-
-**O que o Stream gera:**
-```json
-{
-  "eventName": "INSERT",
-  "dynamodb": {
-    "NewImage": {
-      "usuarioId": {"S": "usr_456"},
-      "status": {"S": "sucesso"}
-    }
-  }
-}
-```
-
-**O que chega no SQS:**
-```json
-{
-  "usuarioId": "usr_456",
-  "statusAtual": "sucesso",
-  "tabelaOrigem": "TabelaB",
-  "tipoEvento": "INSERT"
-}
-```
-
-### Cenário 4: Lambda D (Tabela B - MODIFY)
+### Cenário 3: Lambda D (Tabela B - MODIFY)
 A Lambda D altera o status de um registro na Tabela B para `agendado`.
 
 **O que o Stream gera:**
@@ -267,6 +241,58 @@ A Lambda D altera o status de um registro na Tabela B para `agendado`.
   "statusAtual": "agendado",
   "tabelaOrigem": "TabelaB",
   "tipoEvento": "MODIFY"
+}
+```
+
+### Cenário 4: Lambda C (Tabela B - INSERT SUCESSO)
+A Lambda C cria um registro na Tabela B com status `sucesso`.
+
+**O que o Stream gera:**
+```json
+{
+  "eventName": "INSERT",
+  "dynamodb": {
+    "NewImage": {
+      "usuarioId": {"S": "usr_456"},
+      "status": {"S": "sucesso"}
+    }
+  }
+}
+```
+
+**O que chega no SQS:**
+```json
+{
+  "usuarioId": "usr_456",
+  "statusAtual": "sucesso",
+  "tabelaOrigem": "TabelaB",
+  "tipoEvento": "INSERT"
+}
+```
+
+### Cenário 5: Lambda C (Tabela B - INSERT ERRO)
+A Lambda C cria um registro na Tabela B com status `erro`.
+
+**O que o Stream gera:**
+```json
+{
+  "eventName": "INSERT",
+  "dynamodb": {
+    "NewImage": {
+      "usuarioId": {"S": "usr_999"},
+      "status": {"S": "erro"}
+    }
+  }
+}
+```
+
+**O que chega no SQS:**
+```json
+{
+  "usuarioId": "usr_999",
+  "statusAtual": "erro",
+  "tabelaOrigem": "TabelaB",
+  "tipoEvento": "INSERT"
 }
 ```
 
